@@ -1,0 +1,6 @@
+wheel
+Fabric3
+drf-yasg
+Django==2.2.10
+djangorestframework==3.11.2
+psycopg2
