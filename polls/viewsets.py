@@ -64,11 +64,9 @@ class UserAnswerViewSet(ModelViewSet):
     def answers(self, request):
         if request.user.is_authenticated:
             user_polls = UserPoll.objects.filter(user=request.user)
-            print(request.user.username)
         else:
             session_key = request.session.session_key
             user_polls = UserPoll.objects.filter(session_key=session_key)
-            print(session_key)
 
         answers = UserAnswer.objects.filter(user_poll__in=user_polls)
         serializer = UserAnswerInfoSerializer(answers, many=True)

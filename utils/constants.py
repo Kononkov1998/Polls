@@ -1,9 +1,11 @@
 POLL_MINIMUM_DURATION_MINUTES = 5
 POLL_MINIMUM_DURATION_ERROR = "Poll minimum duration is 5 minutes"
-ERROR_RESPONSE_KEY = 'detail'
-QUESTION_NOT_FOUND = "Question not found"
-ANSWER_ALREADY_EXISTS = 'Answer already exists in this question'
 START_DATE_CANNOT_BE_CHANGED = 'Start date cannot be changed'
 START_DATE_EARLIER_THAN_NOW = 'Start date cannot be earlier than now'
-CANNOT_CREATE_ANSWER = 'You cannot create an answer to a question with text input'
 EMPTY_USER_AND_SESSION_KEY_ERROR = 'Even one of user or session_key should have a value'
+WRONG_QUESTION_ID = 'Wrong question id'
+ANSWER_NOT_ALLOWED = 'Answer not in question allowed answers'
+CANNOT_CREATE_MULTIPLE_ANSWERS = 'You cannot create multiple answers for this question'
+CANNOT_ANSWER_FOR_ANOTHER_USER = 'You cannot answer for another user'
+USER_POLL_CANNOT_BE_CHANGED = 'User_poll cannot be changed'
+QUESTION_CANNOT_BE_CHANGED = 'Question cannot be changed'

@@ -4,7 +4,9 @@ from rest_framework import serializers
 
 from polls.models import Poll, Question, Answer, UserAnswer, UserPoll
 from utils.constants import POLL_MINIMUM_DURATION_MINUTES, POLL_MINIMUM_DURATION_ERROR, START_DATE_CANNOT_BE_CHANGED, \
-    START_DATE_EARLIER_THAN_NOW, CANNOT_CREATE_ANSWER
+    START_DATE_EARLIER_THAN_NOW, WRONG_QUESTION_ID, ANSWER_NOT_ALLOWED, \
+    CANNOT_CREATE_MULTIPLE_ANSWERS, CANNOT_ANSWER_FOR_ANOTHER_USER, QUESTION_CANNOT_BE_CHANGED, \
+    USER_POLL_CANNOT_BE_CHANGED
 from utils.serializers import ChoicesField
 
 
@@ -54,7 +56,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ('id', 'answers', 'type', 'polls')
+        fields = '__all__'
 
 
 class AnswerSerializer(serializers.ModelSerializer):
@@ -74,12 +76,12 @@ class UserPollSerializer(serializers.ModelSerializer):
 class UserAnswerSerializer(serializers.ModelSerializer):
     def validate_question(self, value):
         if self.instance and value != self.instance.question:
-            raise serializers.ValidationError('question cannot be changed')
+            raise serializers.ValidationError(QUESTION_CANNOT_BE_CHANGED)
         return value
 
     def validate_user_poll(self, value):
         if self.instance and value != self.instance.user_poll:
-            raise serializers.ValidationError('user_poll cannot be changed')
+            raise serializers.ValidationError(USER_POLL_CANNOT_BE_CHANGED)
         return value
 
     def validate(self, data):
@@ -91,20 +93,20 @@ class UserAnswerSerializer(serializers.ModelSerializer):
 
         if question and user_poll:
             if question not in user_poll.poll.questions.all():
-                raise serializers.ValidationError('wrong question')
+                raise serializers.ValidationError(WRONG_QUESTION_ID)
 
         if question and answer:
             if question.type != Question.TYPE_TEXT and \
                     answer not in question.answers.all().values_list('text', flat=True):
-                raise serializers.ValidationError('wrong answer')
+                raise serializers.ValidationError(ANSWER_NOT_ALLOWED)
 
         if request.method == 'POST' and question and user_poll and question.type != Question.TYPE_MULTIPLE:
             if UserAnswer.objects.filter(question=question, user_poll=user_poll).exists():
-                raise serializers.ValidationError('you cannot create multiple answers for this question')
+                raise serializers.ValidationError(CANNOT_CREATE_MULTIPLE_ANSWERS)
 
         if user_poll:
             if request.user != user_poll.user and request.session.session_key != user_poll.session_key:
-                raise serializers.ValidationError('you cannot answer for another user')
+                raise serializers.ValidationError(CANNOT_ANSWER_FOR_ANOTHER_USER)
 
         return data
 
