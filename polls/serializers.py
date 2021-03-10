@@ -1,4 +1,3 @@
-from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -6,7 +5,7 @@ from polls.models import Poll, Question, Answer, UserAnswer, UserPoll
 from utils.constants import POLL_MINIMUM_DURATION_MINUTES, POLL_MINIMUM_DURATION_ERROR, START_DATE_CANNOT_BE_CHANGED, \
     START_DATE_EARLIER_THAN_NOW, WRONG_QUESTION_ID, ANSWER_NOT_ALLOWED, \
     CANNOT_CREATE_MULTIPLE_ANSWERS, CANNOT_ANSWER_FOR_ANOTHER_USER, QUESTION_CANNOT_BE_CHANGED, \
-    USER_POLL_CANNOT_BE_CHANGED
+    USER_POLL_CANNOT_BE_CHANGED, CANNOT_CREATE_ANSWER
 from utils.serializers import ChoicesField
 
 
@@ -33,7 +32,7 @@ class PollSerializer(serializers.ModelSerializer):
         model = Poll
         exclude = ('users',)
         extra_kwargs = {'questions': {'required': False}}
-        depth = 1
+        depth = 2
 
 
 class ActivePollSerializer(serializers.ModelSerializer):
@@ -43,20 +42,22 @@ class ActivePollSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'name', 'description', 'start_date', 'end_date', 'questions')
 
 
-class UserSerializer(serializers.ModelSerializer):
-    polls = PollSerializer(required=True, many=True)
-
-    class Meta:
-        model = User
-        fields = '__all__'
-
-
 class QuestionSerializer(serializers.ModelSerializer):
     type = ChoicesField(choices=Question.TYPE_CHOICES)
+
+    def validate(self, data):
+        answers = data.get('answers')
+        question_type = data.get('type')
+
+        if answers and question_type == Question.TYPE_TEXT and len(answers) > 0:
+            raise serializers.ValidationError(CANNOT_CREATE_ANSWER)
+        return data
 
     class Meta:
         model = Question
         fields = '__all__'
+        extra_kwargs = {'answers': {'required': False}}
+        depth = 1
 
 
 class AnswerSerializer(serializers.ModelSerializer):
@@ -104,7 +105,6 @@ class UserAnswerSerializer(serializers.ModelSerializer):
         if user_poll:
             if request.user != user_poll.user and request.session.session_key != user_poll.session_key:
                 raise serializers.ValidationError(CANNOT_ANSWER_FOR_ANOTHER_USER)
-
         return data
 
     class Meta:
@@ -112,31 +112,14 @@ class UserAnswerSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class UserAnswerPollSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Poll
-        exclude = ('questions', 'users')
+class UserPollEntrySerializer(serializers.ModelSerializer):
+    poll = PollSerializer()
+    answers = serializers.SerializerMethodField('get_answers')
 
-
-class UserAnswerQuestionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Question
-        fields = '__all__'
-        depth = 1
-
-
-class UserAnswerUserPollSerializer(serializers.ModelSerializer):
-    poll = UserAnswerPollSerializer()
+    def get_answers(self, obj):
+        answers = UserAnswer.objects.filter(user_poll=self.instance)
+        return UserAnswerSerializer(answers, many=True).data
 
     class Meta:
         model = UserPoll
-        exclude = ('session_key', 'user')
-
-
-class UserAnswerInfoSerializer(serializers.ModelSerializer):
-    user_poll = UserAnswerUserPollSerializer()
-    question = UserAnswerQuestionSerializer()
-
-    class Meta:
-        model = UserAnswer
-        fields = '__all__'
+        exclude = ('user', 'session_key')

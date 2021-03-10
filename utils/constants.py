@@ -9,3 +9,4 @@ CANNOT_CREATE_MULTIPLE_ANSWERS = 'You cannot create multiple answers for this qu
 CANNOT_ANSWER_FOR_ANOTHER_USER = 'You cannot answer for another user'
 USER_POLL_CANNOT_BE_CHANGED = 'User_poll cannot be changed'
 QUESTION_CANNOT_BE_CHANGED = 'Question cannot be changed'
+CANNOT_CREATE_ANSWER = 'You cannot create an answer to a question with text input'

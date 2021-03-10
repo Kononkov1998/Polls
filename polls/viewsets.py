@@ -1,5 +1,5 @@
 from django.utils import timezone
-from rest_framework import permissions
+from rest_framework import permissions, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, AllowAny
 from rest_framework.response import Response
@@ -7,7 +7,7 @@ from rest_framework.viewsets import ModelViewSet
 
 from polls.models import Poll, Question, Answer, UserAnswer, UserPoll
 from polls.serializers import PollSerializer, QuestionSerializer, AnswerSerializer, UserAnswerSerializer, \
-    UserPollSerializer, ActivePollSerializer, UserAnswerInfoSerializer
+    UserPollSerializer, ActivePollSerializer, UserPollEntrySerializer
 
 
 class PollViewSet(ModelViewSet):
@@ -88,20 +88,69 @@ class UserPollViewSet(ModelViewSet):
         serializer = self.get_serializer(user_polls, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['GET'], permission_classes=[permissions.AllowAny])
+    def entry(self, request, *args, **kwargs):
+        entry_id = kwargs.get('pk')
+        if request.user.is_authenticated:
+            user_poll = UserPoll.objects.filter(user=request.user, pk=entry_id).first()
+        else:
+            if not request.session.session_key:
+                return Response([])
+            user_poll = UserPoll.objects.filter(session_key=request.session.session_key, pk=entry_id).first()
+
+        if user_poll is not None:
+            serializer = UserPollEntrySerializer(user_poll)
+            return Response(serializer.data)
+        else:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
 
 class UserAnswerViewSet(ModelViewSet):
     queryset = UserAnswer.objects.all()
     serializer_class = UserAnswerSerializer
     permission_classes = [permissions.AllowAny]
 
-    @action(detail=False, methods=['GET'])
-    def answers(self, request):
+    def list(self, request, *args, **kwargs):
         if request.user.is_authenticated:
-            user_polls = UserPoll.objects.filter(user=request.user)
+            user_answers = UserAnswer.objects.filter(user_poll__user=request.user)
         else:
-            session_key = request.session.session_key
-            user_polls = UserPoll.objects.filter(session_key=session_key)
+            if not request.session.session_key:
+                return Response(status.HTTP_403_FORBIDDEN)
+            user_answers = UserAnswer.objects.filter(user_poll__session_key=request.session.session_key)
 
-        answers = UserAnswer.objects.filter(user_poll__in=user_polls)
-        serializer = UserAnswerInfoSerializer(answers, many=True)
+        serializer = self.get_serializer(user_answers, many=True)
         return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        entry_id = kwargs.get('pk')
+
+        if request.user.is_authenticated:
+            user_answer = UserAnswer.objects.filter(user_poll__user=request.user, pk=entry_id).first()
+        else:
+            if not request.session.session_key:
+                return Response(status.HTTP_403_FORBIDDEN)
+            user_answer = UserAnswer.objects \
+                .filter(user_poll__session_key=request.session.session_key, pk=entry_id).first()
+
+        if user_answer is not None:
+            serializer = self.get_serializer(user_answer)
+            return Response(serializer.data)
+        else:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, *args, **kwargs):
+        entry_id = kwargs.get('pk')
+
+        if request.user.is_authenticated:
+            user_answer = UserAnswer.objects.filter(user_poll__user=request.user, pk=entry_id).first()
+        else:
+            if not request.session.session_key:
+                return Response(status.HTTP_403_FORBIDDEN)
+            user_answer = UserAnswer.objects \
+                .filter(user_poll__session_key=request.session.session_key, pk=entry_id).first()
+
+        if user_answer is not None:
+            user_answer.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response(status=status.HTTP_404_NOT_FOUND)
