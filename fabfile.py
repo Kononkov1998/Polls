@@ -29,3 +29,7 @@ def startapp(name):
 
 def check():
     local(f"python manage.py check --deploy")
+
+
+def createsuperuser():
+    local(f"python manage.py createsuperuser")
