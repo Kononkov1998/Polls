@@ -31,8 +31,9 @@ class PollSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Poll
-        fields = '__all__'
+        exclude = ('users',)
         extra_kwargs = {'questions': {'required': False}}
+        depth = 1
 
 
 class ActivePollSerializer(serializers.ModelSerializer):
@@ -43,7 +44,7 @@ class ActivePollSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    polls = PollSerializer(read_only=True, many=True)
+    polls = PollSerializer(required=True, many=True)
 
     class Meta:
         model = User
@@ -51,7 +52,6 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class QuestionSerializer(serializers.ModelSerializer):
-    polls = PollSerializer(read_only=True, many=True)
     type = ChoicesField(choices=Question.TYPE_CHOICES)
 
     class Meta:
@@ -60,8 +60,6 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class AnswerSerializer(serializers.ModelSerializer):
-    questions = QuestionSerializer(read_only=True, many=True)
-
     class Meta:
         model = Answer
         fields = '__all__'
@@ -85,7 +83,6 @@ class UserAnswerSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        data = super().validate(data)
         question = data.get('question')
         user_poll = data.get('user_poll')
         answer = data.get('answer')
